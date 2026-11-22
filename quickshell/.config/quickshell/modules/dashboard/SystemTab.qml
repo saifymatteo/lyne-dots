@@ -70,7 +70,8 @@ ColumnLayout {
             hoverTextColor: Config.accentColor
             onClicked: {
                 root.closeRequested();
-                Quickshell.execDetached(["missioncenter"]);
+                // The native package, else the Flathub app (Fedora has no package)
+                Quickshell.execDetached(["sh", "-c", "unset LD_PRELOAD MALLOC_CONF; command -v missioncenter >/dev/null && exec missioncenter; exec flatpak run io.missioncenter.MissionCenter"]); // i18n-ignore
             }
         }
     }
