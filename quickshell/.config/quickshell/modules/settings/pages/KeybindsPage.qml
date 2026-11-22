@@ -220,7 +220,7 @@ ColumnLayout {
     // ================= NAVIGATION =================
     SettingsGroup {
         title: I18n.tr("Navigation")
-        visible: KeybindsService.catalog.length > 0 && root.matches("Navigation keys vim arrows", "")
+        visible: KeybindsService.catalog.length > 0 && root.matches("Navigation keys vim arrows komorebi", "")
 
         // Label repeated here for the Settings search (it reads the page source)
         NavKeysPicker {

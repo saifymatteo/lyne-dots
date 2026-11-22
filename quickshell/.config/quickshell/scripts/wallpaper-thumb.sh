@@ -45,7 +45,7 @@ thumb_of() {
         return
     }
     real="$(realpath "$source")"
-    key="$(printf '%s|%s|%s' "$real" "$(stat -c '%s|%Y' "$real")" "$size" | sha1sum | cut -d' ' -f1)"
+    key="$(printf '%s|%s|%s' "$real" "$(stat -c '%s|%.9Y' "$real")" "$size" | sha1sum | cut -d' ' -f1)"
     thumb="$cache/$key.jpg"
 
     if [[ -s "$thumb" ]]; then

@@ -6,8 +6,9 @@ import qs.services
 import "../../components/"
 
 // Password pill: a dot per typed character (from LockService.buffer, typed
-// into the surface's hidden input) followed by a blinking caret, a spinner
-// while PAM checks, a shake on failure, and the Caps Lock / error line
+// into the surface's hidden input) followed by a blinking caret, PAM's
+// status while it works without a password (face unlock), a spinner while
+// PAM checks, a shake on failure, and the Caps Lock / error line
 // below. The arrow submits
 ColumnLayout {
     id: root
@@ -150,10 +151,14 @@ ColumnLayout {
                 visible: LockService.buffer === ""
                 anchors.verticalCenter: parent.verticalCenter
                 leftPadding: Config.padding
-                text: LockService.authenticating ? I18n.tr("Checking…") : I18n.tr("Type your password")
+                // PAM's own words while it works without a password (Howdy's
+                // "Attempting face recognition")
+                text: LockService.authenticating ? I18n.tr("Checking…") : LockService.pamStatus !== "" ? LockService.pamStatus : I18n.tr("Type your password")
+                elide: Text.ElideRight
+                width: Math.min(implicitWidth, dots.width - x)
                 font.family: Config.font
                 font.pixelSize: Config.fontSizeNormal
-                color: LockService.authenticating ? Config.accentColor : Config.mutedColor
+                color: LockService.authenticating || LockService.pamStatus !== "" ? Config.accentColor : Config.mutedColor
             }
         }
 

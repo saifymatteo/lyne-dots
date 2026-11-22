@@ -349,5 +349,18 @@ Singleton {
         function toggle(): void {
             root.toggle();
         }
+
+        // Applies PATH like choosing it in Settings (theme follows it)
+        function set(path: string): string {
+            const file = WallpaperService.expandHome(path);
+            if (!file.startsWith("/"))
+                return "error: absolute path required"; // i18n-ignore
+            WallpaperService.setWallpaper(file);
+            return "ok";
+        }
+
+        function current(): string {
+            return WallpaperService.currentWallpaper;
+        }
     }
 }

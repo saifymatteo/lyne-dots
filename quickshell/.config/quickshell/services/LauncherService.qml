@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import qs.config
 import "fuzzy.js" as Fuzzy
+import "calc.js" as Calc
 
 Singleton {
     id: root
@@ -46,6 +47,12 @@ Singleton {
     // Search field "top", "bottom", or "auto": by the bottom edge when the
     // panel hangs from it, so it stays put and the list grows away from it
     readonly property string order: StateService.get("launcher.order", "top")
+
+    // Apps mode answers what looks like a calculation or conversion with
+    // qalc above the apps ("2*21", "5 km to mi", "100usd"; see calc.js)
+    readonly property bool inferCalc: StateService.get("launcher.inferCalc", true)
+    // Currency a bare amount ("100usd") is converted to; "" = as typed
+    readonly property string homeCurrency: StateService.get("launcher.homeCurrency", "")
 
     // Usage keeps at most this many apps, the least recently used go first
     readonly property int usageLimit: 200
@@ -242,6 +249,26 @@ Singleton {
         ];
     }
 
+    // Apps mode: qalc's answer to a term that looks like a calculation, for
+    // that term only (inferTerm), so Enter never copies a stale result
+    property string inferResult: ""
+    property string inferTerm: ""
+    property string inferExpression: ""
+
+    readonly property var inferItems: {
+        if (mode.id !== "apps" || term === "" || inferResult === "" || inferTerm !== term)
+            return [];
+        return [
+            {
+                id: "calc-inferred",
+                name: inferResult,
+                comment: I18n.tr("%1  ·  Enter copies the result", inferExpression),
+                glyph: "\u{f018f}",
+                run: () => Quickshell.execDetached(["wl-copy", root.inferResult])
+            }
+        ];
+    }
+
     // ========================================================================
     // CLIPBOARD
     // ========================================================================
@@ -314,7 +341,7 @@ Singleton {
         case "clipboard":
             return filteredClips;
         default:
-            return filteredApps;
+            return inferItems.length > 0 ? [...inferItems, ...filteredApps] : filteredApps;
         }
     }
 
@@ -681,13 +708,19 @@ Singleton {
 
     // --- Calculator: qalc runs a moment after typing stops ---
 
-    onTermChanged: {
+    onTermChanged: _runCalc()
+
+    function _runCalc() {
         if (mode.id === "calc" && term !== "")
+            calcDelay.restart();
+        else if (mode.id === "apps" && inferCalc && Calc.looksLikeCalc(term))
             calcDelay.restart();
         else if (term === "") {
             calcResult = "";
             calcError = "";
         }
+        if (mode.id !== "apps" || !inferCalc || !Calc.looksLikeCalc(term))
+            inferResult = "";
     }
 
     Timer {
@@ -699,7 +732,9 @@ Singleton {
                 restart();
                 return;
             }
-            calcProc.expression = root.term;
+            calcProc.term = root.term;
+            calcProc.inferred = root.modeId === "apps";
+            calcProc.expression = calcProc.inferred ? Calc.calcExpression(root.term, root.homeCurrency) : root.term;
             calcProc.running = true;
         }
     }
@@ -708,6 +743,10 @@ Singleton {
         id: calcProc
 
         property string expression
+        // What was typed (expression may add " to <home currency>") and
+        // whether it came from the apps mode's inference
+        property string term
+        property bool inferred: false
 
         // 127 = qalc isn't installed
         command: ["sh", "-c", "command -v qalc >/dev/null || exit 127; qalc -t -- \"$1\"", "sh", expression]
@@ -718,15 +757,23 @@ Singleton {
 
         onExited: code => {
             // A newer expression was typed meanwhile: its run comes next
-            if (expression !== root.term)
+            if (term !== root.term || inferred !== (root.modeId === "apps"))
                 return;
+            const lines = calcOut.text.trim().split("\n").filter(l => l.trim() !== "");
+            const last = lines[lines.length - 1] ?? "";
+            // Inferred: an answer or nothing, never an error under the apps
+            if (inferred) {
+                const ok = code === 0 && Calc.usefulResult(term, last);
+                root.inferResult = ok ? last : "";
+                root.inferTerm = term;
+                root.inferExpression = expression;
+                return;
+            }
             if (code === 127) {
                 root.calcResult = "";
                 root.calcError = I18n.tr("qalc isn't installed (package libqalculate)");
                 return;
             }
-            const lines = calcOut.text.trim().split("\n").filter(l => l.trim() !== "");
-            const last = lines[lines.length - 1] ?? "";
             if (code !== 0 || last === "" || /^error/i.test(last)) {
                 root.calcResult = "";
                 root.calcError = last.replace(/^error:\s*/i, "") || I18n.tr("Can't calculate that");
@@ -738,10 +785,27 @@ Singleton {
         }
     }
 
+    // Exchange rates for currency conversions: qalc fetches them (-e, which
+    // needs an expression or it starts interactive) at most once a day,
+    // in the background when the launcher opens
+    readonly property string _exratesStamp: (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache") + "/lyne/qalc-exrates"
+
+    Process {
+        id: exratesProc
+        command: ["sh", "-c", 'command -v qalc >/dev/null || exit 0; [ -n "$(find "$1" -mmin -1440 2>/dev/null)" ] && exit 0; mkdir -p "${1%/*}" && timeout 60 qalc -t -e 1 >/dev/null 2>&1 && touch "$1"', "sh", root._exratesStamp]
+    }
+
+    onIndexedChanged: {
+        if (indexed && inferCalc && !exratesProc.running)
+            exratesProc.running = true;
+    }
+
     // The history is read when the clipboard mode opens (not while typing)
     onModeIdChanged: {
         if (modeId === "clipboard" && visible)
             ClipboardService.refresh();
+        // Same term in another mode ("=2*21" → "2*21")
+        _runCalc();
     }
 
     // Reset selection and confirmation when the query or selection changes

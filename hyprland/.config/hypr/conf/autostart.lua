@@ -13,15 +13,17 @@
 local vars = require("conf/variables")
 local HOME = os.getenv("HOME")
 
--- Quickshell runs with 2 jemalloc arenas: by default every new worker thread
--- gets an arena that keeps its memory after the thread ends (~70 MB more RSS,
--- same CPU). lyne reload starts it the same way.
+-- Quickshell starts through scripts/start.sh, as lyne reload does: 2 jemalloc
+-- arenas (less RSS) and Howdy's PAM module preloaded when the lock uses it.
+-- The polkit agent is KDE's where it's installed (Arch, Fedora's kf6 path),
+-- else hyprpolkitagent's user unit.
+local QS_SCRIPTS = HOME .. "/.config/quickshell/scripts"
 local system = {
-    { name = "Quickshell",        command = "env MALLOC_CONF=narenas:2 quickshell",
+    { name = "Quickshell",        command = QS_SCRIPTS .. "/start.sh",
       about = "Bar, notifications, launcher and this settings window" },
-    { name = "Polkit agent",      command = "/usr/lib/polkit-kde-authentication-agent-1",
+    { name = "Polkit agent",      command = "sh -c 'for a in /usr/lib/polkit-kde-authentication-agent-1 /usr/libexec/kf6/polkit-kde-authentication-agent-1; do [ -x \"$a\" ] && exec \"$a\"; done; exec systemctl --user start hyprpolkitagent.service'",
       about = "Asks for your password when an app needs admin rights" },
-    { name = "KDE app cache",     command = "kbuildsycoca6",
+    { name = "KDE app cache",     command = "sh -c 'command -v kbuildsycoca6 >/dev/null && exec kbuildsycoca6'",
       about = "Lets KDE apps (Dolphin's Open with...) find your apps" },
     { name = "Hyprsunset",        command = "hyprsunset",
       about = "Night light" },
@@ -30,7 +32,7 @@ local system = {
     { name = "Wallpaper",         command = vars.scriptPath .. "/Wallpaper/wallpaper-boot.sh",
       about = "Restores the wallpaper of the last session" },
     -- Text and image watchers, with the options from Settings › Clipboard
-    { name = "Clipboard history", command = HOME .. "/.config/quickshell/scripts/cliphist-watch.sh",
+    { name = "Clipboard history", command = QS_SCRIPTS .. "/cliphist-watch.sh",
       about = "Keeps what you copy for the clipboard history" },
 }
 

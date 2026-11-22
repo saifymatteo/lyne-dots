@@ -7,7 +7,8 @@ import Quickshell.Io
 
 // One listener on logind's manager object for the whole shell: IdleService
 // follows BlockInhibited, LockService locks on PrepareForSleep. Each used to
-// run its own gdbus monitor on the same signals
+// run its own gdbus monitor on the same signals. A second one listens on this
+// session's object for Lock (loginctl lock-session)
 Singleton {
     id: root
 
@@ -16,6 +17,9 @@ Singleton {
 
     // start = true right before suspend, false on wake
     signal prepareForSleep(bool start)
+    // loginctl lock-session (or lock-sessions) for this session. Its Unlock
+    // isn't passed on: only a password (PAM) unlocks
+    signal lockRequested
 
     Process {
         id: readProc
@@ -50,6 +54,25 @@ Singleton {
         onExited: restartTimer.start()
     }
 
+    // The session: XDG_SESSION_ID, or the user's graphical session when the
+    // shell runs outside it (a systemd user unit under uwsm)
+    Process {
+        id: sessionProc
+        running: true
+        command: ["setpriv", "--pdeathsig", "TERM", "--", "sh", "-c", `id="\${XDG_SESSION_ID:-$(loginctl show-user "$(id -un)" -p Display --value)}"
+path="$(busctl call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager GetSession s "$id" | cut -d'"' -f2)"
+[ -n "$path" ] || exit 1
+exec gdbus monitor --system --dest org.freedesktop.login1 --object-path "$path"`]
+        stdout: SplitParser {
+            // /org/freedesktop/login1/session/_33: org.freedesktop.login1.Session.Lock ()
+            onRead: line => {
+                if (/\.Session\.Lock \(\)/.test(line))
+                    root.lockRequested();
+            }
+        }
+        onExited: sessionRestart.start()
+    }
+
     Timer {
         id: restartTimer
         interval: 5000
@@ -57,5 +80,11 @@ Singleton {
             monitorProc.running = true;
             readProc.running = true;
         }
+    }
+
+    Timer {
+        id: sessionRestart
+        interval: 5000
+        onTriggered: sessionProc.running = true
     }
 }

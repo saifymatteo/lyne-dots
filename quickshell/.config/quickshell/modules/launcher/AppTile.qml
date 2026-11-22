@@ -18,6 +18,8 @@ Item {
     readonly property bool hovered: tileHover.hovered
     readonly property int iconSize: Config.fontSizeIconLarge + Config.padding * 2
     readonly property var clipEntry: modelData?.clip ?? null
+    // Apps mode's calculator answer sits among the apps: its glyph, no menu
+    readonly property bool isApp: LauncherService.isApp(modelData)
     readonly property string thumbnail: clipEntry?.kind === "image" ? ClipboardService.thumbnails[clipEntry.id] ?? "" : ""
     readonly property bool textClip: clipEntry !== null && clipEntry.kind !== "image" && clipEntry.kind !== "color"
 
@@ -52,9 +54,9 @@ Item {
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: event => {
-            if (event.button === Qt.RightButton)
+            if (event.button === Qt.RightButton && (root.isApp || root.clipEntry))
                 root.menuRequested(menuButton);
-            else
+            else if (event.button !== Qt.RightButton)
                 root.activated();
         }
     }
@@ -67,10 +69,10 @@ Item {
 
         Image {
             anchors.horizontalCenter: parent.horizontalCenter
-            visible: !root.clipEntry
+            visible: root.isApp
             width: root.iconSize
             height: width
-            source: root.clipEntry ? "" : IconService.url(root.modelData?.icon || "application-x-executable", "")
+            source: !root.isApp ? "" : IconService.url(root.modelData?.icon || "application-x-executable", "")
             sourceSize: Qt.size(width, height)
             fillMode: Image.PreserveAspectFit
         }
@@ -79,7 +81,7 @@ Item {
         // copied color: a swatch
         ClippingRectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            visible: root.clipEntry !== null
+            visible: !root.isApp
             width: parent.width
             height: root.iconSize
             radius: Config.radiusLarge
@@ -149,7 +151,7 @@ Item {
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: Math.round(Config.padding / 2)
-        visible: root.hovered
+        visible: root.hovered && (root.isApp || root.clipEntry !== null)
         onClicked: root.menuRequested(menuButton)
     }
 }

@@ -142,10 +142,16 @@ function lyne_bind_preset(name)
     if not preset then
         return
     end
-    -- Sorted: the same order on every load
+    if preset._resize_step then
+        LYNE_RESIZE_STEP = preset._resize_step
+    end
+    -- Sorted: the same order on every load. Keys starting with "_" are
+    -- options, not bind ids
     local ids = {}
     for id in pairs(preset) do
-        table.insert(ids, id)
+        if id:sub(1, 1) ~= "_" then
+            table.insert(ids, id)
+        end
     end
     table.sort(ids)
     for _, id in ipairs(ids) do
@@ -169,7 +175,9 @@ function M.export()
     local in_preset = {}
     for _, preset in pairs(load_presets()) do
         for id in pairs(preset) do
-            in_preset[id] = true
+            if id:sub(1, 1) ~= "_" then
+                in_preset[id] = true
+            end
         end
     end
     local items = {}

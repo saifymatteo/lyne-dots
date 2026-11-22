@@ -13,7 +13,13 @@ hl.env("AQ_FORCE_LINEAR_BLIT", "0")
 hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
 hl.env("XDG_SESSION_TYPE", "wayland")
 hl.env("XDG_SESSION_DESKTOP", "Hyprland")
-hl.env("XDG_MENU_PREFIX", "arch-")
+-- Arch ships its menu as arch-applications.menu (KDE apps need it to list
+-- apps); other distros use the plain applications.menu
+local menu = io.open("/etc/xdg/menus/arch-applications.menu", "r")
+if menu then
+    menu:close()
+    hl.env("XDG_MENU_PREFIX", "arch-")
+end
 
 -- --- Toolkits (Qt, GTK) ---
 -- No GTK_THEME: it would override the light/dark gtk-theme the shell sets

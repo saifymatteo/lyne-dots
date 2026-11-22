@@ -379,6 +379,10 @@ Singleton {
     // Apply wallpaper, with the transition set in Settings (wallpaper-set.sh).
     // A missing file is skipped and leaves the current one.
     function setWallpaper(path: string) {
+        // Re-applying a path whose file was overwritten (daily Bing image):
+        // forget its cached tile so it is made again from the new content
+        if (path === currentWallpaper)
+            _forgetCached([path]);
         setWallpaperProc.run([_setScript, path, transition, transitionSpeed], path);
     }
 
@@ -418,6 +422,15 @@ Singleton {
     // Delete image files (library or theme folders)
     // The one in use is never deleted: it would stay on screen (a video
     // playing on without its pause rules) and come back on the next start
+    function _forgetCached(paths) {
+        const posters = Object.assign({}, root.posters);
+        paths.forEach(p => delete posters[p]);
+        root.posters = posters;
+        const thumbs = Object.assign({}, root.thumbs);
+        paths.forEach(p => delete thumbs[p]);
+        root.thumbs = thumbs;
+    }
+
     function deleteWallpapers(paths) {
         paths = paths.filter(p => p !== currentWallpaper);
         if (paths.length === 0)
@@ -425,12 +438,7 @@ Singleton {
 
         wallpapers = wallpapers.filter(w => !paths.includes(w));
         // A new file under the same name gets its own poster
-        const posters = Object.assign({}, root.posters);
-        paths.forEach(p => delete posters[p]);
-        root.posters = posters;
-        const thumbs = Object.assign({}, root.thumbs);
-        paths.forEach(p => delete thumbs[p]);
-        root.thumbs = thumbs;
+        _forgetCached(paths);
         themeWallpapers = themeWallpapers.filter(w => !paths.includes(w));
 
         const favs = favorites.filter(f => !paths.includes(wallpaperDir + "/" + f));

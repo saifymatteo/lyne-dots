@@ -73,6 +73,10 @@ Singleton {
         {
             label: I18n.tr("Both"),
             value: "both"
+        },
+        {
+            label: I18n.tr("Komorebi"),
+            value: "komorebi"
         }
     ]
     // Preset binds whose keys another shortcut also uses: [{ description, keys, others }]

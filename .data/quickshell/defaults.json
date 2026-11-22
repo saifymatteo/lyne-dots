@@ -114,7 +114,9 @@
         "rows": 7,
         "style": "spotlight",
         "position": "bottom",
-        "order": "top"
+        "order": "top",
+        "inferCalc": true,
+        "homeCurrency": ""
     },
     "cursor": {
         "theme": "Bibata-Modern-Classic",

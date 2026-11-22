@@ -140,6 +140,20 @@ ColumnLayout {
             path: "launcher.rankByUsage"
         }
 
+        ToggleRow {
+            label: I18n.tr("Calculator in search")
+            description: I18n.tr("Sums and conversions typed in the search (2*21, 5 km to mi, 100usd) answered above the apps; needs qalc")
+            path: "launcher.inferCalc"
+        }
+
+        TextFieldRow {
+            visible: LauncherService.inferCalc
+            label: I18n.tr("Home currency")
+            description: I18n.tr("Amounts typed without a target (100usd) are converted to it, e.g. EUR; empty leaves them as typed")
+            path: "launcher.homeCurrency"
+            placeholder: I18n.tr("None")
+        }
+
         StepperRow {
             label: I18n.tr("Visible rows")
             description: I18n.tr("How many results show before the list scrolls")

@@ -7,8 +7,9 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Pam
 
-// Session lock: PAM authentication, the password being typed (shared by the
-// lock surfaces of every monitor) and locking before the system sleeps
+// Session lock: PAM authentication (started at lock, so face unlock runs
+// first), the password being typed (shared by the lock surfaces of every
+// monitor), locking before the system sleeps and on loginctl lock-session
 Singleton {
     id: root
 
@@ -36,6 +37,16 @@ Singleton {
     readonly property bool showMedia: StateService.get("lock.showMedia", true)
     readonly property bool lockBeforeSleep: StateService.get("lock.beforeSleep", true)
 
+    // PAM service in /etc/pam.d (lock.pamService, e.g. "hyprlock" for a
+    // stack with Howdy's face unlock first); "login" when unset or missing
+    readonly property string _requestedService: StateService.get("lock.pamService", "login")
+    property bool _requestedExists: false
+    readonly property string pamService: _requestedService !== "" && !_requestedService.includes("/") && _requestedExists ? _requestedService : "login"
+
+    // What PAM says while it isn't asking for anything (Howdy's "Attempting
+    // face recognition"...), for the lock's status line
+    readonly property string pamStatus: pam.active && !pam.responseRequired && !pam.messageIsError ? pam.message : ""
+
     signal authSucceeded
     // The password field was clicked: the surfaces take the keyboard back
     signal focusRequested
@@ -43,45 +54,152 @@ Singleton {
     // ========================================================================
     // PAM AUTHENTICATION
     // ========================================================================
+    // A transaction starts as soon as the screen locks, without a password,
+    // so modules that need none (Howdy) run first. A password entered before
+    // PAM asks for one waits in _pendingPassword and is sent when it does.
+    // After a failure (and on wake, the camera doesn't survive sleep) the
+    // transaction starts again, once per event
 
     property string _pendingPassword: ""
+    // PAM asked and nothing was sent yet
+    property bool _awaitingResponse: false
+    // A password was sent in the running transaction
+    property bool _responded: false
+    // Restarts in a row with no password involved (a stack failing at once
+    // would otherwise loop)
+    property int _autoRestarts: 0
+    property string _lastError: ""
+    // Succeeded: nothing starts again while the lock fades out
+    property bool _authed: false
 
     PamContext {
         id: pam
         config: "login"
         user: Quickshell.env("USER")
 
-        onResponseRequiredChanged: {
-            if (responseRequired)
-                pam.respond(root._pendingPassword);
+        // Every message, also a second prompt in a row (responseRequired
+        // doesn't change then)
+        onPamMessage: {
+            if (pam.messageIsError && pam.message !== "")
+                root._lastError = pam.message;
+            if (!pam.responseRequired)
+                return;
+            root._awaitingResponse = true;
+            if (root._pendingPassword !== "")
+                root._respond();
+            else
+                root.authenticating = false;
         }
 
+        // Followed by completed(Error)
+        onError: error => {
+            console.log("[Lock] PAM error:", PamError.toString(error));
+            root._lastError = I18n.tr("Authentication error");
+        }
+
+        // The conversation is already gone here (message is empty again)
         onCompleted: result => {
-            root.authenticating = false;
-            root._pendingPassword = "";
+            const responded = root._responded;
+            root._awaitingResponse = false;
+            root._responded = false;
+            if (!root.locked || root._authed)
+                return;
 
             if (result === PamResult.Success) {
                 console.log("[Lock] Authentication successful");
+                root.authenticating = false;
+                root._pendingPassword = "";
                 root.failed = false;
                 root.failMessage = "";
+                root._authed = true;
                 root.authSucceeded();
-            } else {
-                console.log("[Lock] Authentication failed:", PamResult.toString(result));
+                return;
+            }
+
+            console.log("[Lock] Authentication failed:", PamResult.toString(result));
+            const message = root._lastError !== "" ? root._lastError : I18n.tr("Wrong password");
+            root._lastError = "";
+            if (responded) {
+                // A wrong password: told, and PAM starts over (face first)
+                root.authenticating = false;
                 root.attempts++;
-                // PAM's own words when it has them (e.g. faillock's lockout)
-                root.failMessage = pam.messageIsError && pam.message !== "" ? pam.message : I18n.tr("Wrong password");
+                root.failMessage = message;
+                root.failed = true;
+                // This restart is the failure's one
+                root._autoRestarts = 1;
+                root._restartSoon();
+            } else if (root._autoRestarts === 0) {
+                // Ended before any password (a face-only stack, an error):
+                // once more, keeping a password typed meanwhile
+                root._autoRestarts++;
+                root._restartSoon();
+            } else {
+                // Again: stop until the next Enter or wake
+                root.authenticating = false;
+                root._pendingPassword = "";
+                root.failMessage = message;
                 root.failed = true;
             }
         }
+    }
 
-        onError: error => {
-            root.authenticating = false;
-            root._pendingPassword = "";
-            console.log("[Lock] PAM error:", PamError.toString(error));
-            root.failMessage = I18n.tr("Authentication error");
-            root.failed = true;
+    function _respond() {
+        const password = _pendingPassword;
+        _pendingPassword = "";
+        _awaitingResponse = false;
+        _responded = true;
+        // A face scan's complaint isn't the password's
+        _lastError = "";
+        authenticating = true;
+        pam.respond(password);
+    }
+
+    function _startPam() {
+        restartTimer.stop();
+        if (!locked || _authed || pam.active)
+            return;
+        _awaitingResponse = false;
+        _responded = false;
+        _lastError = "";
+        pam.config = pamService;
+        console.log("[Lock] Starting PAM (" + pam.config + ")");
+        if (!pam.start()) {
+            // Not startable (config file gone...): no transaction, so no
+            // completed() either
+            authenticating = false;
+            _pendingPassword = "";
+            failMessage = I18n.tr("Authentication error");
+            failed = true;
         }
     }
+
+    function _restartSoon() {
+        restartTimer.restart();
+    }
+
+    // Lets the old PAM helper (and the camera) go before the next one
+    Timer {
+        id: restartTimer
+        interval: 500
+        onTriggered: root._startPam()
+    }
+
+    // Checked once per name (PamContext would only log an error)
+    Process {
+        id: serviceCheck
+        onExited: code => root._requestedExists = code === 0
+    }
+
+    function _checkService() {
+        _requestedExists = false;
+        if (_requestedService !== "" && _requestedService !== "login" && !_requestedService.includes("/")) {
+            serviceCheck.command = ["test", "-f", "/etc/pam.d/" + _requestedService];
+            serviceCheck.running = true;
+        }
+    }
+
+    on_RequestedServiceChanged: _checkService()
+    Component.onCompleted: _checkService()
 
     // ========================================================================
     // PUBLIC FUNCTIONS
@@ -97,8 +215,11 @@ Singleton {
             failMessage = "";
             authenticating = false;
             _pendingPassword = "";
+            _autoRestarts = 0;
+            _authed = false;
             locked = true;
             checkCapsLock();
+            _startPam();
         }
     }
 
@@ -110,6 +231,9 @@ Singleton {
             // destroyed (causes "invalid context" warning). State is reset in lock().
             locked = false;
             secure = false;
+            restartTimer.stop();
+            pam.abort();
+            _pendingPassword = "";
         }
     }
 
@@ -127,15 +251,20 @@ Singleton {
         onTriggered: root.unlock()
     }
 
+    // Enter: sent now if PAM is asking, else kept until it asks
     function tryUnlock() {
-        if (authenticating || buffer === "")
+        if (!locked || _authed || authenticating || buffer === "")
             return;
         console.log("[Lock] Attempting authentication");
         _pendingPassword = buffer;
         buffer = "";
         authenticating = true;
         failed = false;
-        pam.start();
+        _autoRestarts = 0;
+        if (!pam.active)
+            _startPam();
+        else if (_awaitingResponse)
+            _respond();
     }
 
     // A check asked for while one runs reruns after it (Process does)
@@ -182,6 +311,28 @@ Singleton {
                 releaseFallback.stop();
                 root._holdSleep = root.lockBeforeSleep;
             }
+        }
+    }
+
+    // On wake a face scan started before sleeping has a dead camera: start
+    // it again, unless a password is waiting for it or being checked
+    Connections {
+        target: Login1Service
+
+        function onPrepareForSleep(start: bool): void {
+            if (start || !root.locked || root._authed || root._responded || root._pendingPassword !== "")
+                return;
+            console.log("[Lock] Woke up locked: restarting PAM");
+            root._autoRestarts = 0;
+            pam.abort();
+            root._awaitingResponse = false;
+            root._restartSoon();
+        }
+
+        // loginctl lock-session. Unlock (loginctl unlock-session) is
+        // ignored: only PAM unlocks
+        function onLockRequested(): void {
+            root.lock();
         }
     }
 

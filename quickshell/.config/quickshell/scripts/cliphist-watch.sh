@@ -12,11 +12,14 @@ if command -v jq >/dev/null && [ -f "$state" ]; then
     # Not `// true`: jq's // replaces false too
     images=$(jq -r 'if .clipboard.storeImages == false then "false" else "true" end' "$state")
     max_items=$(jq -r '.clipboard.maxItems // 750' "$state")
+    enabled=$(jq -r 'if .clipboard.enabled == false then "false" else "true" end' "$state")
 fi
 
 command -v cliphist >/dev/null || exit 127
 
 pkill -u "$(id -u)" -f "wl-paste --type (text|image) --watch cliphist" 2>/dev/null
+# clipboard.enabled = false (fork): no history kept at all
+[ "${enabled:-true}" = "false" ] && exit 0
 
 setsid -f wl-paste --type text --watch cliphist -max-items "$max_items" store >/dev/null 2>&1
 if [ "$images" = "true" ]; then

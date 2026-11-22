@@ -4,11 +4,12 @@ import qs.config
 import qs.services
 
 // Keycaps of a navigation keys preset: H J K L, the arrow keys in their
-// usual inverted T, or both, one above the other
+// usual inverted T, or both, one above the other; komorebi shows its resize
+// keys E I N O over the arrows
 Rectangle {
     id: root
 
-    // Preset: "vim", "arrows" or "both"
+    // Preset: "vim", "arrows", "both" or "komorebi"
     property string value
 
     readonly property real capSize: Config.fontSizeIconSmall + Config.padding
@@ -39,7 +40,7 @@ Rectangle {
             spacing: root.gap
 
             Repeater {
-                model: ["H", "J", "K", "L"]
+                model: root.value === "komorebi" ? ["E", "I", "N", "O"] : ["H", "J", "K", "L"]
 
                 Cap {}
             }

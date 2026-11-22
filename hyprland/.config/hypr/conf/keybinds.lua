@@ -114,20 +114,33 @@ bind("move-right-alt", "Windows", "Move window right (arrow)", "", hl.dsp.window
 bind("move-up-alt",    "Windows", "Move window up (arrow)",    "", hl.dsp.window.move({ direction = "u" }))
 bind("move-down-alt",  "Windows", "Move window down (arrow)",  "", hl.dsp.window.move({ direction = "d" }))
 
--- Resize window
+-- Resize window. Pixels per press: read when pressed, so a navigation
+-- preset can change it (the komorebi one uses 50, conf/bind_presets.lua)
+LYNE_RESIZE_STEP = 20
+local function resize(dx, dy)
+    return function()
+        hl.dispatch(hl.dsp.window.resize({ x = dx * LYNE_RESIZE_STEP, y = dy * LYNE_RESIZE_STEP, relative = true }))
+    end
+end
 local resizeOpts = { repeating = true, locked = true }
-bind("resize-left",  "Windows", "Shrink width",   mainMod .. " + ALT + H", hl.dsp.window.resize({ x = -20, y = 0, relative = true }), resizeOpts)
-bind("resize-right", "Windows", "Grow width",     mainMod .. " + ALT + L", hl.dsp.window.resize({ x = 20,  y = 0, relative = true }), { repeating = true, locked = true })
-bind("resize-up",    "Windows", "Shrink height",  mainMod .. " + ALT + K", hl.dsp.window.resize({ x = 0, y = -20, relative = true }), { repeating = true, locked = true })
-bind("resize-down",  "Windows", "Grow height",    mainMod .. " + ALT + J", hl.dsp.window.resize({ x = 0, y = 20,  relative = true }), { repeating = true, locked = true })
-bind("resize-left-alt",  "Windows", "Shrink width (arrow)",  "", hl.dsp.window.resize({ x = -20, y = 0, relative = true }), resizeOpts)
-bind("resize-right-alt", "Windows", "Grow width (arrow)",    "", hl.dsp.window.resize({ x = 20,  y = 0, relative = true }), resizeOpts)
-bind("resize-up-alt",    "Windows", "Shrink height (arrow)", "", hl.dsp.window.resize({ x = 0, y = -20, relative = true }), resizeOpts)
-bind("resize-down-alt",  "Windows", "Grow height (arrow)",   "", hl.dsp.window.resize({ x = 0, y = 20,  relative = true }), resizeOpts)
+bind("resize-left",  "Windows", "Shrink width",   mainMod .. " + ALT + H", resize(-1, 0), resizeOpts)
+bind("resize-right", "Windows", "Grow width",     mainMod .. " + ALT + L", resize(1, 0),  resizeOpts)
+bind("resize-up",    "Windows", "Shrink height",  mainMod .. " + ALT + K", resize(0, -1), resizeOpts)
+bind("resize-down",  "Windows", "Grow height",    mainMod .. " + ALT + J", resize(0, 1),  resizeOpts)
+bind("resize-left-alt",  "Windows", "Shrink width (arrow)",  "", resize(-1, 0), resizeOpts)
+bind("resize-right-alt", "Windows", "Grow width (arrow)",    "", resize(1, 0),  resizeOpts)
+bind("resize-up-alt",    "Windows", "Shrink height (arrow)", "", resize(0, -1), resizeOpts)
+bind("resize-down-alt",  "Windows", "Grow height (arrow)",   "", resize(0, 1),  resizeOpts)
 
 -- Drag windows with mouse (mouse buttons can't be recorded in Settings)
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+
+-- Monitors: no keys by default (the komorebi preset gives them Super + , / .)
+bind("focus-monitor-prev",    "Windows", "Focus previous monitor",          "", hl.dsp.focus({ monitor = "-1" }))
+bind("focus-monitor-next",    "Windows", "Focus next monitor",              "", hl.dsp.focus({ monitor = "+1" }))
+bind("move-to-monitor-prev",  "Windows", "Move window to previous monitor", "", hl.dsp.window.move({ monitor = "-1", follow = true }))
+bind("move-to-monitor-next",  "Windows", "Move window to next monitor",     "", hl.dsp.window.move({ monitor = "+1", follow = true }))
 
 -- ==============================================================================
 -- WORKSPACES MULTI-MONITOR
@@ -205,9 +218,11 @@ bind("zoom-out", "Shell", "Zoom out", mainMod .. " + minus", hl.dsp.exec_cmd(zoo
 
 -- Tapping Super alone (bound on release, conf/binds.lua)
 bind("launcher",          "Shell", "App launcher",      mainMod .. " + SUPER_L",   hl.dsp.global("quickshell:app_launcher"))
+bind("launcher-alt",      "Shell", "App launcher (second keys)", "",               hl.dsp.global("quickshell:app_launcher"))
 bind("clipboard-history", "Shell", "Clipboard history", mainMod .. " + V",         hl.dsp.global("quickshell:clipboard_history"))
 bind("screenshot",        "Shell", "Screenshot",        "Print",                   hl.dsp.global("quickshell:take_screenshot"))
 bind("power-menu",        "Shell", "Power menu",        mainMod .. " + End",       hl.dsp.global("quickshell:power_menu"))
+bind("power-menu-alt",    "Shell", "Power menu (second keys)", "",                 hl.dsp.global("quickshell:power_menu"))
 bind("lock-screen",       "Shell", "Lock screen",       mainMod .. " + Escape",    hl.dsp.global("quickshell:lock_screen"))
 bind("wallpapers",        "Shell", "Wallpaper picker",  mainMod .. " + B",         hl.dsp.global("quickshell:wallpaper_picker"))
 bind("settings",          "Shell", "Settings",          mainMod .. " + I",         hl.dsp.global("quickshell:settings"))

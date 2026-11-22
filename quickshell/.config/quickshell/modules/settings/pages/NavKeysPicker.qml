@@ -19,7 +19,8 @@ TemplatePicker {
         return I18n.tr("%1. Keys you changed yourself stay", ({
                 vim: I18n.tr("Super + H J K L move the focus, with Shift the window, with Alt its size; Super + Ctrl + H / L switch workspaces"),
                 arrows: I18n.tr("Super + arrow keys move the focus, with Shift the window, with Alt its size; Super + Ctrl + ← / → switch workspaces"),
-                both: I18n.tr("H J K L and the arrow keys both work, with the same modifiers")
+                both: I18n.tr("H J K L and the arrow keys both work, with the same modifiers"),
+                komorebi: I18n.tr("As komorebi on Windows: Super + arrow keys move the focus, with Shift the window; Super + Shift + E I N O resize; Super + Ctrl + - / = switch workspaces; Super + , / . monitors; Alt + Space the launcher")
             })[value]);
     }
     descriptionColor: conflicts.length > 0 ? Config.warningColor : Config.subtextColor
