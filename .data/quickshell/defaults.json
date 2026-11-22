@@ -103,7 +103,8 @@
     },
     "clipboard": {
         "storeImages": true,
-        "maxItems": 750
+        "maxItems": 750,
+        "enabled": true
     },
     "launcher": {
         "favorites": [],
@@ -171,7 +172,8 @@
         "showStatus": true,
         "showPower": true,
         "showMedia": true,
-        "beforeSleep": true
+        "beforeSleep": true,
+        "pamService": "login"
     },
     "power": {
         "style": "farewell",
@@ -348,5 +350,8 @@
         "channel": "stable",
         "notify": true,
         "notified": ""
+    },
+    "matteo": {
+        "switched": ""
     }
 }
