@@ -86,3 +86,8 @@ uwsm_env() {
     run grep -F 'scripts/start.sh"' "$REPO/.data/lyne-cli/commands/reload.sh"
     assert_success
 }
+
+@test "apps started by the shell don't inherit its LD_PRELOAD/MALLOC_CONF" {
+    run grep -F 'shellEnv: "unset LD_PRELOAD MALLOC_CONF; ' "$REPO/quickshell/.config/quickshell/services/CursorService.qml"
+    assert_success
+}

@@ -100,8 +100,10 @@ Singleton {
     }
 
     // For sh -c scripts that start apps: the shell's own environment still
-    // has the cursor it started with, and X11 apps read it from there
-    readonly property string shellEnv: "export XCURSOR_THEME=" + _quote(theme) + " XCURSOR_SIZE=" + size + "; " // i18n-ignore
+    // has the cursor it started with, and X11 apps read it from there.
+    // LD_PRELOAD and MALLOC_CONF are the shell's own (scripts/start.sh);
+    // apps must not inherit them (Nix builds fail to load pam_howdy.so)
+    readonly property string shellEnv: "unset LD_PRELOAD MALLOC_CONF; export XCURSOR_THEME=" + _quote(theme) + " XCURSOR_SIZE=" + size + "; " // i18n-ignore
 
     function _quote(text: string): string {
         return "'" + text.replace(/'/g, "'\\''") + "'";
