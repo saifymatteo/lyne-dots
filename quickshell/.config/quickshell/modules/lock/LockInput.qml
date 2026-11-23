@@ -278,6 +278,92 @@ ColumnLayout {
         }
     }
 
+    // Face unlock again (Howdy gave up, or nobody was looking): a quiet
+    // outlined pill under the password. Only for a custom PAM service:
+    // plain "login" has no face module
+    Rectangle {
+        id: face
+
+        readonly property bool busy: LockService.scanning
+
+        visible: LockService.pamService !== "login"
+        Layout.alignment: Qt.AlignHCenter
+        Layout.topMargin: Config.spacing
+        implicitWidth: faceRow.implicitWidth + implicitHeight * 1.2
+        implicitHeight: Config.fontSizeNormal * 2.8
+        radius: height / 2
+        // The hover look also while Howdy scans (1-2 s), so the click shows
+        color: faceMouse.containsMouse || busy ? Qt.alpha(Config.cardHoverColor, 0.6) : Qt.alpha(Config.cardColor, 0)
+        border.width: 1
+        border.color: busy || faceMouse.containsMouse ? Qt.alpha(Config.accentColor, 0.6) : Qt.alpha(Config.mutedColor, 0.45)
+
+        Behavior on color {
+            enabled: !Config.themeTransitioning
+            ColorAnimation {
+                duration: Config.animDurationShort
+            }
+        }
+
+        Behavior on border.color {
+            enabled: !Config.themeTransitioning
+            ColorAnimation {
+                duration: Config.animDurationShort
+            }
+        }
+
+        Row {
+            id: faceRow
+
+            readonly property color tint: face.busy || faceMouse.containsMouse ? Config.accentColor : Config.mutedColor
+
+            anchors.centerIn: parent
+            spacing: Config.padding
+
+            // nf-md-lock, a spinner while the camera looks
+            Item {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Config.fontSizeNormal
+                height: width
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: !face.busy
+                    text: "\u{f033e}"
+                    font.family: Config.font
+                    font.pixelSize: Config.fontSizeNormal
+                    color: faceRow.tint
+                }
+
+                Spinner {
+                    anchors.centerIn: parent
+                    running: face.busy
+                    size: Config.fontSizeNormal
+                    color: faceRow.tint
+                }
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: I18n.tr("Unlock with Howdy")
+                font.family: Config.font
+                font.pixelSize: Config.fontSizeSmall
+                color: faceRow.tint
+            }
+        }
+
+        MouseArea {
+            id: faceMouse
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: face.busy ? Qt.ArrowCursor : Qt.PointingHandCursor
+            onClicked: {
+                LockService.scanFace();
+                LockService.focusRequested();
+            }
+        }
+    }
+
     // Caps Lock and the last error
     RowLayout {
         Layout.alignment: Qt.AlignHCenter

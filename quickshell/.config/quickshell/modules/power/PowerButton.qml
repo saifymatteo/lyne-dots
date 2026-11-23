@@ -190,6 +190,12 @@ Item {
                 PowerService.selectedId = root.action.id;
             }
         }
+
+        // Icon-only buttons (lock screen, power strip) say what they do
+        QsToolTip {
+            text: root.action.label
+            shown: root.variant === "square" && mouse.containsMouse
+        }
     }
 
     // The action's box with the countdown ring around it and the letter

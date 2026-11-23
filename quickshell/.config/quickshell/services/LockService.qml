@@ -47,6 +47,13 @@ Singleton {
     // face recognition"...), for the lock's status line
     readonly property string pamStatus: pam.active && !pam.responseRequired && !pam.messageIsError ? pam.message : ""
 
+    // A module that needs no password (Howdy's face scan) is running, or
+    // about to: from the start of a transaction until PAM asks for the
+    // password or finishes. Howdy with detection_notice off says nothing
+    // meanwhile, so pamStatus alone can't tell
+    readonly property bool scanning: _pamScanning || restartTimer.running
+    property bool _pamScanning: false
+
     signal authSucceeded
     // The password field was clicked: the surfaces take the keyboard back
     signal focusRequested
@@ -84,6 +91,7 @@ Singleton {
                 root._lastError = pam.message;
             if (!pam.responseRequired)
                 return;
+            root._pamScanning = false;
             root._awaitingResponse = true;
             if (root._pendingPassword !== "")
                 root._respond();
@@ -100,6 +108,7 @@ Singleton {
         // The conversation is already gone here (message is empty again)
         onCompleted: result => {
             const responded = root._responded;
+            root._pamScanning = false;
             root._awaitingResponse = false;
             root._responded = false;
             if (!root.locked || root._authed)
@@ -163,7 +172,9 @@ Singleton {
         _lastError = "";
         pam.config = pamService;
         console.log("[Lock] Starting PAM (" + pam.config + ")");
+        _pamScanning = true;
         if (!pam.start()) {
+            _pamScanning = false;
             // Not startable (config file gone...): no transaction, so no
             // completed() either
             authenticating = false;
@@ -233,6 +244,7 @@ Singleton {
             secure = false;
             restartTimer.stop();
             pam.abort();
+            _pamScanning = false;
             _pendingPassword = "";
         }
     }
@@ -265,6 +277,25 @@ Singleton {
             _startPam();
         else if (_awaitingResponse)
             _respond();
+    }
+
+    // The face button: PAM again from the top, so a module that needs no
+    // password (Howdy) scans once more. Ignored while a scan or a password
+    // check runs
+    function scanFace() {
+        if (!locked || _authed || authenticating || _pendingPassword !== "" || scanning)
+            return;
+        console.log("[Lock] Face scan requested");
+        failed = false;
+        _autoRestarts = 0;
+        if (pam.active) {
+            // Waiting at the password prompt: same restart as on wake
+            pam.abort();
+            _awaitingResponse = false;
+            _restartSoon();
+        } else {
+            _startPam();
+        }
     }
 
     // A check asked for while one runs reruns after it (Process does)
