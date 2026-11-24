@@ -1,432 +1,84 @@
-<!-- Images and videos live on the orphan `media` branch (readme/), so cloning
-     main stays light. Keybindings: regenerate with
-     `lua .data/readme/keybinds.lua README.md`. -->
+# lyne-dots (Matteo's fork)
 
-<div align="center">
+A personal fork of [caioax/lyne-dots](https://github.com/caioax/lyne-dots), running as the Fedora Workstation desktop of Matteo's private Settings (dotfiles) repo.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/logo-dark.svg">
-  <img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/logo-light.svg" alt="lyne-dots" width="150">
-</picture>
+> [!NOTE]
+> This README only covers what differs from upstream. For features, screenshots, themes, keybindings, the `lyne` CLI and credits, read the [upstream README](https://github.com/caioax/lyne-dots#readme). Upstream targets Arch Linux; this fork also runs on Fedora.
 
-# lyne-dots
+## What's different
 
-**A Hyprland desktop for Arch Linux, with a Quickshell shell you set up from its own Settings app.**<br>
-One theme follows the bar, terminal, editor, GTK/Qt apps, Hyprland and Zen Browser.
+### Fedora support
 
-[![Arch Linux](https://img.shields.io/badge/Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white)](https://archlinux.org) [![Hyprland](https://img.shields.io/badge/Hyprland-0.56-58E1FF?style=flat-square&logo=hyprland&logoColor=white)](https://hypr.land) [![Quickshell](https://img.shields.io/badge/Quickshell-QML-7aa2f7?style=flat-square)](https://quickshell.org) [![License](https://img.shields.io/github/license/caioax/lyne-dots?style=flat-square&color=bb9af7)](LICENSE) [![Last commit](https://img.shields.io/github/last-commit/caioax/lyne-dots?style=flat-square&color=9ece6a)](https://github.com/caioax/lyne-dots/commits) [![Ko-fi](https://img.shields.io/badge/Ko--fi-support-f7768e?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/caioax)
+- **Autostart:** finds the KDE polkit agent under Fedora's `/usr/libexec/kf6/` and falls back to `hyprpolkitagent`. `kbuildsycoca6` runs only when installed.
+- **Menus:** `XDG_MENU_PREFIX=arch-` is set only when `arch-applications.menu` exists.
+- **Mission Center:** the dashboard button launches the Flathub app (`io.missioncenter.MissionCenter`) when the binary is missing.
 
-</div>
+### Face unlock lock screen (Howdy)
 
-https://github.com/user-attachments/assets/63b3c7d6-250e-4c3f-8eb5-343068b08e5a
+- **Face first:** the lock starts PAM as soon as the screen locks, so Howdy scans before a password is asked. A password typed early waits until PAM asks for it. PAM restarts after a failure and on wake, because the camera does not survive sleep.
+- **PAM service:** `lock.pamService` in `state.json` picks the `/etc/pam.d` stack (for example `hyprlock`). The default is `login`.
+- **Retry button:** "Unlock with Howdy" under the password field runs the face scan again. It is hidden for `login`.
+- **Crash guard:** `scripts/start.sh` preloads `pam_howdy.so` into Quickshell when the lock's stack uses it, because unloading the module can crash the next PAM log. Apps the shell launches don't inherit `LD_PRELOAD` or `MALLOC_CONF`.
+- **`loginctl lock-session`** locks the screen. Unlocking still needs PAM.
 
-<div align="center">
+### Launcher calculator
 
-```bash
-curl -fsSL https://caioax.github.io/lyne-dots/install | bash
-```
+- Sums and conversions typed in apps mode (`2*21`, `5 km to mi`, `100usd`) are answered above the apps through `qalc`.
+- **Settings › Launcher:** "Calculator in search" (`launcher.inferCalc`) turns it on or off. "Home currency" (`launcher.homeCurrency`) sets the currency for bare amounts.
+- Detection is in `services/calc.js`; it ignores app names such as `7zip` and `gimp 2`.
 
-[Highlights](#highlights) · [Gallery](#gallery) · [Themes](#themes) · [Install](#install) · [Update](#update) · [Reference](#reference) · [Credits](#credits)
+### Keybinds
 
-</div>
+- **`komorebi` navigation preset** (Settings › Keybinds) matches komorebi + whkd on Windows:
 
-## Highlights
+  | Action | Keys |
+  | --- | --- |
+  | Focus / move window | Super (+ Shift) + arrows |
+  | Resize, 50 px per press | Super + Shift + E/I/N/O |
+  | Previous / next workspace | Super + Ctrl + `-` / `=` (add Shift to move the window) |
+  | Previous / next monitor | Super + `,` / `.` (add Shift to move the window) |
+  | Launcher | Alt + Space |
+  | Power menu | Alt + F4 |
 
-<table>
-<tr>
-<td width="33%" valign="top">
+- **New bind ids:** `focus-monitor-*`, `move-to-monitor-*`, `launcher-alt` and `power-menu-alt`. Every preset can set them; none has keys by default.
+- **Resize step:** presets set `_resize_step` (`LYNE_RESIZE_STEP`, default 20 px).
 
-**A Settings app for everything**<br>
-27 pages: appearance, bar, launcher, dashboard, lock screen, monitors, GPUs, workspaces, keybinds, autostart. Searchable, applied live, no config files to edit.
+### Smaller changes
 
-</td>
-<td width="33%" valign="top">
+- **Clipboard:** `clipboard.enabled = false` stops keeping history.
+- **Wallpaper IPC:** `qs ipc call wallpapers set <path>` applies a wallpaper as Settings does; `current` prints it. Re-applying a path whose file changed rebuilds its thumbnail, so the daily Bing image refreshes.
+- **Start script:** autostart and `lyne reload` both start the shell through `scripts/start.sh`.
+- **State sync:** `lock.pamService`, `clipboard.enabled` and `matteo.switched` are in `defaults.json`, so `lyne state sync` keeps them.
+- **Power menu:** icon-only buttons show their label as a tooltip.
 
-**Themes that reach every app**<br>
-11 presets plus Material You from the wallpaper. Switching fades the shell and Hyprland's borders and recolors kitty, Neovim, GTK/Qt and Zen Browser.
-
-</td>
-<td width="33%" valign="top">
-
-**Make your own theme**<br>
-Start from a color, a wallpaper or another theme; an OKLCH picker and a live preview do the rest. Wallpapers in the theme's colors are rendered for it.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**A shell with templates**<br>
-Bar, launcher, Quick Settings, OSD, lock screen and power menu each come in several styles, previewed in Settings before you pick one.
-
-</td>
-<td valign="top">
-
-**Monitors and workspaces**<br>
-Drag monitors on a map with a keep-or-revert timer, give each monitor its own workspaces, choose which GPU renders on hybrid laptops.
-
-</td>
-<td valign="top">
-
-**A guided installer and a CLI**<br>
-Every question first, then an unattended install with a progress bar. `lyne update` pulls, syncs your settings and runs migrations.
-
-</td>
-</tr>
-</table>
-
-## Gallery
-
-<table>
-<tr>
-<td width="50%"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/desktop.webp" alt="Desktop"></td>
-<td width="50%"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/launcher.webp" alt="Launcher"></td>
-</tr>
-<tr>
-<td align="center"><sub>Desktop: kitty, Neovim and fastfetch in Tokyo Night</sub></td>
-<td align="center"><sub>Launcher: apps, actions (<code>&gt;</code>) and a calculator (<code>=</code>)</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/dashboard.webp" alt="Dashboard overview"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/dashboard-media.webp" alt="Dashboard media"></td>
-</tr>
-<tr>
-<td align="center"><sub>Dashboard: clock, weather, calendar with holidays, resources, player</sub></td>
-<td align="center"><sub>Media tab: cava ring, synced lyrics, a dancing GIF</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/dashboard-system.webp" alt="Dashboard system"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/dashboard-weather.webp" alt="Dashboard weather"></td>
-</tr>
-<tr>
-<td align="center"><sub>System tab: CPU, GPU, memory, storage and network</sub></td>
-<td align="center"><sub>Weather tab: next 24 hours and 7 days (Open-Meteo)</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/quick-settings.webp" alt="Quick Settings"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/notifications.webp" alt="Notifications"></td>
-</tr>
-<tr>
-<td align="center"><sub>Quick Settings: toggles, audio and notification history</sub></td>
-<td align="center"><sub>Notifications with actions and inline replies</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/clipboard.webp" alt="Clipboard"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/screenshot.webp" alt="Screenshot tool"></td>
-</tr>
-<tr>
-<td align="center"><sub>Clipboard history with image thumbnails and color swatches</sub></td>
-<td align="center"><sub>Screenshots: region, window or screen; edit, copy text (OCR)</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/color-picker.webp" alt="Color picker"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/lock.webp" alt="Lock screen"></td>
-</tr>
-<tr>
-<td align="center"><sub>Color picker with a magnifier and hex / rgb / hsl</sub></td>
-<td align="center"><sub>Lock screen with the player and power buttons</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/power.webp" alt="Power menu"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/settings-osd.webp" alt="OSD settings"></td>
-</tr>
-<tr>
-<td align="center"><sub>Power menu with a key for each action</sub></td>
-<td align="center"><sub>OSD styles, previewed in Settings</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/settings-theme.webp" alt="Theme settings"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/settings-creator.webp" alt="Theme creator"></td>
-</tr>
-<tr>
-<td align="center"><sub>Settings › Theme: presets, Material You, light or dark</sub></td>
-<td align="center"><sub>Theme creator with an OKLCH picker and a live preview</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/settings-bar.webp" alt="Bar settings"></td>
-<td><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/settings-wallpaper.webp" alt="Wallpaper settings"></td>
-</tr>
-<tr>
-<td align="center"><sub>Bar templates: docked, docked corners, floating, islands</sub></td>
-<td align="center"><sub>Wallpaper library with favorites and per-theme wallpapers</sub></td>
-</tr>
-</table>
-
-## Themes
-
-Switch from Settings › Theme, the Quick Settings palette button or `lyne theme set <name>`. Each theme brings its own generated wallpaper.
-
-<table>
-<tr>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/tokyonight.webp" alt="Tokyo Night"><br><sub>Tokyo Night</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/catppuccin-mocha.webp" alt="Catppuccin Mocha"><br><sub>Catppuccin Mocha</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/dracula.webp" alt="Dracula"><br><sub>Dracula</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/gruvbox.webp" alt="Gruvbox Dark"><br><sub>Gruvbox Dark</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/nord.webp" alt="Nord"><br><sub>Nord</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/rose-pine.webp" alt="Rose Pine"><br><sub>Rose Pine</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/tokyonight-light.webp" alt="Tokyo Night Day"><br><sub>Tokyo Night Day</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/catppuccin-latte.webp" alt="Catppuccin Latte"><br><sub>Catppuccin Latte</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/gruvbox-light.webp" alt="Gruvbox Light"><br><sub>Gruvbox Light</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/nord-light.webp" alt="Nord Light"><br><sub>Nord Light</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/caioax/lyne-dots/media/readme/themes/rose-pine-dawn.webp" alt="Rose Pine Dawn"><br><sub>Rose Pine Dawn</sub></td>
-<td align="center" valign="middle"><b>+ Material You</b><br><sub>colors from your wallpaper<br>(<code>lyne theme auto</code>)</sub></td>
-</tr>
-</table>
-
-A theme sets the colors of:
-
-| Target | What changes |
-| --- | --- |
-| Quickshell | Every panel, with a color fade on switches |
-| Hyprland | Active and inactive borders, shadow (faded too) |
-| kitty | Terminal palette, cursor, tabs |
-| Neovim | The `lyne` colorscheme, sent to running instances |
-| GTK / Qt / KDE apps | Colors and light or dark variant |
-| Zen Browser | Toolbars, tabs and menus (`lyne zen enable`) |
-| Wallpaper | The theme's wallpaper (optional) |
-
-Keeping your own kitty or Neovim config (installed without the terminal or editor category)? The shell still writes the colors for them:
-
-- **kitty:** add `include current-theme.conf` to your `~/.config/kitty/kitty.conf`.
-- **Neovim:** copy `nvim/.config/nvim/colors/lyne.lua` and `nvim/.config/nvim/lua/lyne/` into your config and use `colorscheme lyne`; open instances using it follow theme switches.
+Full list: `git log --oneline upstream/main..main`.
 
 ## Install
 
-**Requirements:** Arch Linux (or a close derivative), a user with `sudo`, and an internet connection.
+This fork is installed by the Settings repo, not by upstream's `curl | bash`:
 
 ```bash
-curl -fsSL https://caioax.github.io/lyne-dots/install | bash
+bash "$MATTEO_SETTINGS/installer/Installer_Personal.sh"   # full Fedora machine
+bash "$MATTEO_SETTINGS/hyprland/install.sh"               # just (re)activate lyne + the Settings layer
 ```
 
-It clones the repo into `~/.lyne-dots` (installing `git` if needed) at the latest [release](https://github.com/caioax/lyne-dots/releases), the Stable channel's version, and starts the installer. Prefer to read it first? [`bootstrap.sh`](bootstrap.sh) is short.
-
-The installer asks everything first:
-
-1. **Packages:** pick categories (core, terminal, editor, apps, utils, fonts, quickshell, theming). The shell's own files (Hyprland, Quickshell, `~/.local/`) are always linked; **terminal** also links the kitty, Zsh, tmux and fastfetch configs, **editor** the Neovim one and **theming** the GTK, Qt and KDE ones. Leave a category out and your configs for it stay as they are.
-2. **Graphics:** the GPUs it found; for NVIDIA, the driver (open or 580xx, optionally 32-bit) and its environment. Which GPU renders stays automatic (Settings › Graphics changes it).
-3. **Reboot** when done, then a review screen with the packages to link and every file of yours that will be replaced.
-
-After the sudo password (asked once, kept alive), it installs without further questions, with a progress bar and the latest output. Files it replaces go to `~/.lyne-dots-backup/<date>/`; the full log is in `~/.cache/lyne/install-<date>.log`. Changed your mind later? `lyne link nvim` links a package (your files to the backup first) and `lyne unlink nvim` brings yours back.
-
-<details>
-<summary><b>Installer options</b></summary>
-
-| Option | What it does |
-| --- | --- |
-| `--dry-run` | Change nothing: a throwaway HOME and stand-ins for sudo, pacman, yay... |
-| `--answers FILE` | Unattended: answers as `id=value` lines (`categories=`, `nvidia=`, `gpu_order=`, `reboot=`) |
-| `--packages NAME` | Install one category (`--packages nvidia` installs or fixes the driver) |
-| `--stow-only` | Only link the dotfiles again: the packages linked before (`lyne link` adds others) |
-| `--setup-only` | Only create the local Hyprland files |
-
-More in [.install/README.md](.install/README.md).
-
-</details>
+The Settings layer (`hyprland/matteo.lua`: monitors, window rules, plugins, Matteo binds, daily wallpaper) is loaded from `~/.config/hypr/local/` and lives in Settings, not here. `$MATTEO_SETTINGS/hyprland/AGENTS.md` decides what belongs in this fork and what belongs in Settings.
 
 ## Update
 
+Don't use `lyne update` or its channels: they move the checkout off the fork. Merge upstream instead:
+
 ```bash
-lyne update
+git -C ~/.lyne-dots fetch upstream && git -C ~/.lyne-dots merge upstream/main
+(cd ~/.lyne-dots && node --test tests/js && lua tests/lua/bind_presets.lua)
+git -C ~/.lyne-dots push origin main
+lyne reload
 ```
 
-Updates the dotfiles, adds new settings to your `state.json` without touching the ones you changed, runs pending migrations (new packages, moved files) and reloads Quickshell. Settings › System › About shows when an update is available and runs it for you.
+When upstream changes its README, the merge conflicts on `README.md`. Keep this one with `git checkout --ours README.md`, then add anything new the fork changed.
 
-Two channels, picked in Settings › System › About or with `lyne update channel`:
-
-- **Stable** (default): the newest [release](https://github.com/caioax/lyne-dots/releases).
-- **Latest**: every change as soon as it lands on `main`.
-
-Switching back to Stable never goes back in time: you stay where you are until the next release.
-
-> [!NOTE]
-> Changes you made inside `~/.lyne-dots` are listed first, and you choose to stash them (`git stash pop` brings them back), discard them or cancel. Keep personal changes in `~/.config/hypr/local/` or in Settings, which are not tracked.
-
-## Reference
-
-<details>
-<summary><b>lyne CLI</b></summary>
-
-`lyne` is installed to `~/.local/bin`. Run `lyne <command> --help` for subcommands.
-
-| Command | Description |
-| --- | --- |
-| `lyne theme` | Show the theme; `list`, `set <name>`, `auto` (Material You), `scheme dark\|light` |
-| `lyne update` | Update to the channel's version, sync `state.json`, run migrations, reload Quickshell; `status`, `channel stable\|latest` |
-| `lyne reload` | Restart Quickshell |
-| `lyne state` | Edit `state.json`; `sync`, `rebuild` |
-| `lyne migrate` | `list`, `run`, `done` for migrations |
-| `lyne link` | Each dotfiles package, linked or not; `lyne link <package>` links one the install left out |
-| `lyne unlink` | Removes a package's links and brings back your files from the backup |
-| `lyne monitors` | Monitor rules from Settings; revert a trial or reset them |
-| `lyne workspaces` | Each monitor's workspace blocks |
-| `lyne keyboard` | Layouts, options and per-keyboard layouts |
-| `lyne autostart` | What starts at login |
-| `lyne gpu` | GPUs found; `order`, `links` |
-| `lyne nvidia` | NVIDIA driver status; `install` installs or fixes it |
-| `lyne zen` | Zen Browser profiles that follow the theme |
-| `lyne whatsapp` | Open WhatsApp Web (the app of the WhatsApp special) |
-| `lyne welcome` | Open the welcome screen again |
-| `lyne git` | Run git in the dotfiles repository |
-
-</details>
-
-<details>
-<summary><b>Keybindings</b></summary>
-
-Every bind below can be changed or turned off in Settings › Hyprland › Keybinds, where you can also add your own. Prefer the arrow keys over H / J / K / L? Pick Arrows (or Both) under Navigation keys there. <kbd>Super</kbd> + left / right drag moves / resizes windows.
-
-<!-- keybinds:start -->
-
-**Apps**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Super</kbd> + <kbd>Enter</kbd> | Terminal |
-| <kbd>Super</kbd> + <kbd>D</kbd> | File manager |
-| <kbd>Super</kbd> + <kbd>Z</kbd> | Browser |
-
-**Windows**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Super</kbd> + <kbd>Q</kbd> | Close window |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Space</kbd> | Toggle floating |
-| <kbd>Super</kbd> + <kbd>F</kbd> | Fullscreen |
-| <kbd>Super</kbd> + <kbd>Tab</kbd> | Split / swap with main / column width |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Tab</kbd> | Previous column width (scrolling) |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Tab</kbd> | Next window layout |
-| <kbd>Super</kbd> + <kbd>,</kbd> | Swap column left (scrolling) |
-| <kbd>Super</kbd> + <kbd>.</kbd> | Swap column right (scrolling) |
-| <kbd>Super</kbd> + <kbd>[</kbd> | Join / leave previous column (scrolling) |
-| <kbd>Super</kbd> + <kbd>]</kbd> | Join / leave next column (scrolling) |
-| <kbd>Super</kbd> + <kbd>C</kbd> | Center column (scrolling) |
-| <kbd>Super</kbd> + <kbd>R</kbd> | Fit visible columns (scrolling) |
-| <kbd>Super</kbd> + <kbd>H / L / K / J</kbd> | Focus left / right / up / down |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>H / L / K / J</kbd> | Move window left / right / up / down |
-| <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>H</kbd> | Shrink width |
-| <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>L</kbd> | Grow width |
-| <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>K</kbd> | Shrink height |
-| <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd> | Grow height |
-
-**Workspaces**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Super</kbd> + <kbd>1–0</kbd> | Go to workspace 1–10 |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>1–0</kbd> | Move window to workspace 1–10 |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>L</kbd> | Next workspace |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>H</kbd> | Previous workspace |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd> | Move window to next workspace |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd> | Move window to previous workspace |
-
-**Media**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Volume Up</kbd> | Volume up |
-| <kbd>Volume Down</kbd> | Volume down |
-| <kbd>Mute</kbd> | Mute |
-| <kbd>Mic Mute</kbd> | Mute microphone |
-| <kbd>Brightness Up</kbd> | Brightness up |
-| <kbd>Brightness Down</kbd> | Brightness down |
-| <kbd>Next</kbd> | Next track |
-| <kbd>Pause</kbd> or <kbd>Play</kbd> | Play / pause |
-| <kbd>Previous</kbd> | Previous track |
-
-**Shell**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Super</kbd> + <kbd>=</kbd> | Zoom in |
-| <kbd>Super</kbd> + <kbd>-</kbd> | Zoom out |
-| <kbd>Super (tap)</kbd> | App launcher |
-| <kbd>Super</kbd> + <kbd>V</kbd> | Clipboard history |
-| <kbd>Print</kbd> | Screenshot |
-| <kbd>Super</kbd> + <kbd>End</kbd> | Power menu |
-| <kbd>Super</kbd> + <kbd>Esc</kbd> | Lock screen |
-| <kbd>Super</kbd> + <kbd>B</kbd> | Wallpaper picker |
-| <kbd>Super</kbd> + <kbd>I</kbd> | Settings |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload Quickshell |
-
-**Keyboard**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Super</kbd> + <kbd>Space</kbd> | Next keyboard layout |
-
-**Special workspaces**
-
-| Keys | Action |
-| --- | --- |
-| <kbd>Super</kbd> + <kbd>W</kbd> | Toggle WhatsApp |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> | Move window to WhatsApp |
-| <kbd>Super</kbd> + <kbd>M</kbd> | Toggle Music |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> | Move window to Music |
-
-<!-- keybinds:end -->
-
-</details>
-
-<details>
-<summary><b>Repository layout</b></summary>
-
-Each top-level folder is a [GNU Stow](https://www.gnu.org/software/stow/) package linked into `$HOME`: `quickshell/`, `hyprland/` and `local/` always, the others with their installer category (`lyne link` shows which are linked). The repo doesn't have to stay at `~/.lyne-dots`: the `lyne` command, the session and the shell follow where it really is.
-
-| Folder | Contents |
-| --- | --- |
-| `quickshell/` | The shell: bar, launcher, dashboard, notifications, OSD, lock, power, screenshots, Settings |
-| `hyprland/` | Hyprland config in Lua (`conf/`), plus `local/` for per-machine files |
-| `kitty/`, `zsh/`, `tmux/`, `nvim/` | Terminal, shell (Oh My Zsh + Powerlevel10k), multiplexer, editor |
-| `theming/`, `kde/` | GTK 3/4, Qt 5/6 and KDE color settings |
-| `fastfetch/` | System info |
-| `local/` | Scripts, the `lyne` command, themes and wallpapers (`~/.local/`) |
-| `.install/` | Installer libraries, package lists and setup |
-| `.data/` | Default themes, wallpapers and their generator, state defaults, CLI commands and migrations |
-
-</details>
-
-<details>
-<summary><b>Customization</b></summary>
-
-- **Settings first.** Almost everything is in Settings (<kbd>Super</kbd> + <kbd>I</kbd>). Its values live in `~/.config/quickshell/state.json`; `lyne state` opens it.
-- **Language**: English or Português (Brasil), in Settings › Profile & Region (Automatic follows your system). Dates and numbers follow it.
-- **Machine-specific Hyprland files** live in `~/.config/hypr/local/` (not tracked). Settings writes `settings.lua`, `monitors.lua` and `gpus.lua` there; any other `.lua` file you add is loaded too.
-- **Themes** are JSON files in `~/.local/themes/`. Create one in Settings › Theme › New theme, or copy a file from `.data/themes/`.
-- **Wallpapers** live in `~/.local/wallpapers/`, with each theme's in `themes/<theme>/`. `.data/wallpapers/generator/generate.py --theme-file <json>` renders the contour wallpaper for any palette.
-
-</details>
-
-<details>
-<summary><b>Languages and translations</b></summary>
-
-The shell speaks English and Português (Brasil). Every string goes through an `I18n` singleton with one JSON file per language in `quickshell/.config/quickshell/i18n/`, so a new language needs no code:
-
-```sh
-node tools/i18n.js add de "Deutsch"   # creates i18n/de.json, every value empty
-node tools/i18n.js extract            # after translating: refresh the language list
-node tools/i18n.js check              # placeholders, plural forms, files up to date
-```
-
-Partial translations work (untranslated strings show in English). [i18n/README.md](quickshell/.config/quickshell/i18n/README.md) has the rules (placeholders, plurals, contexts, date formats), how to try a language live and the pseudo-language for finding untranslated or cut text.
-
-</details>
-
-## Credits
-
-- [Caelestia shell](https://github.com/caelestia-dots/shell): inspiration for many of the shell's panels and its Settings
-- [HyprQuickFrame](https://github.com/Ronin-CK/HyprQuickFrame): the screenshot tool's starting point
-- [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell): inspiration for the installer's TUI layout and its questions before installing
-- [Quickshell](https://quickshell.org), [Hyprland](https://hypr.land), [matugen](https://github.com/InioX/matugen), [awww](https://codeberg.org/LGFae/awww), [cliphist](https://github.com/sentriz/cliphist), [cava](https://github.com/karlstav/cava), [tesseract](https://github.com/tesseract-ocr/tesseract)
-- Weather from [Open-Meteo](https://open-meteo.com); lyrics from [LRCLIB](https://lrclib.net) and NetEase
-
-## Support
-
-If lyne-dots is useful to you, you can support it on [GitHub Sponsors](https://github.com/sponsors/caioax) or [Ko-fi](https://ko-fi.com/caioax).
+Fork commits are prefixed `fork:`. Generic fixes are offered upstream so the fork stays small. Run bats inside a lyne session with `env -u LD_PRELOAD -u MALLOC_CONF`.
 
 ## License
 
-[GPL-3.0](LICENSE)
+[GPL-3.0](LICENSE), as upstream.
