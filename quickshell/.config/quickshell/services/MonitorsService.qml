@@ -32,6 +32,14 @@ Singleton {
     property bool ready: false
 
     readonly property var savedRules: StateService.get("monitors.rules", [])
+    // monitors.primary (Settings › Monitors › Primary monitor): the lock's
+    // password field and the power menu; "" = the focused monitor
+    readonly property string primary: StateService.get("monitors.primary", "")
+
+    // The primary monitor when connected, else the focused one
+    function primaryOrFocused(): string {
+        return Quickshell.screens.some(s => s.name === primary) ? primary : (Hyprland.focusedMonitor?.name ?? "");
+    }
     readonly property string fileText: _fileText
     property string _fileText: ""
     // monitors.lua was written by this service (else by nwg-displays or by

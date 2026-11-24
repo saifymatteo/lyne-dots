@@ -15,9 +15,10 @@ A personal fork of [caioax/lyne-dots](https://github.com/caioax/lyne-dots), runn
 
 ### Face unlock lock screen (Howdy)
 
-- **Face first:** the lock starts PAM as soon as the screen locks, so Howdy scans before a password is asked. A password typed early waits until PAM asks for it. PAM restarts after a failure and on wake, because the camera does not survive sleep.
-- **PAM service:** `lock.pamService` in `state.json` picks the `/etc/pam.d` stack (for example `hyprlock`). The default is `login`.
-- **Retry button:** "Unlock with Howdy" under the password field runs the face scan again. It is hidden for `login`.
+- **Face on request:** the lock starts the password-only `login` stack, so locking never turns the camera on. A password typed early waits until PAM asks for it. PAM restarts after a failure and on wake, still without the camera.
+- **PAM service:** `lock.pamService` in `state.json` picks the `/etc/pam.d` stack the face button runs (for example `hyprlock`). The default is `login`.
+- **Face button:** "Unlock with Howdy" under the password field runs that stack once (Howdy, then its password fallback). It is hidden for `login`.
+- **Primary monitor:** Settings › Monitors › Primary monitor (`monitors.primary`) gets the lock's password field and face button, and the power menu (Alt+F4), when it is connected; else they go on the focused monitor. The other monitors show only the clock (lock) or the dimmed backdrop (power menu).
 - **Crash guard:** `scripts/start.sh` preloads `pam_howdy.so` into Quickshell when the lock's stack uses it, because unloading the module can crash the next PAM log. Apps the shell launches don't inherit `LD_PRELOAD` or `MALLOC_CONF`.
 - **`loginctl lock-session`** locks the screen. Unlocking still needs PAM.
 

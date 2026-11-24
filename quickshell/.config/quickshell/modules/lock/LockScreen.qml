@@ -6,8 +6,8 @@ import Quickshell.Wayland
 import qs.config
 import qs.services
 
-// Session lock. Every monitor gets the blurred wallpaper; the one focused
-// when locking shows the lock.style template with the password, the others
+// Session lock. Every monitor gets the blurred wallpaper; LockService.screen
+// (the primary monitor, else the one focused when locking) shows the lock.style template with the password, the others
 // only the clock. Each surface has a hidden input that edits the shared
 // LockService.buffer, so typing works whichever monitor has the keyboard
 WlSessionLock {
@@ -31,7 +31,7 @@ WlSessionLock {
     WlSessionLockSurface {
         id: surface
 
-        // The monitor focused when locking, or the first one
+        // LockService.screen, or the first one
         readonly property bool main: {
             const name = LockService.screen;
             const known = Quickshell.screens.some(s => s.name === name);

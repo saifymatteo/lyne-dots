@@ -287,7 +287,8 @@
         "lidOff": true
     },
     "monitors": {
-        "rules": []
+        "rules": [],
+        "primary": ""
     },
     "gpus": {
         "order": []

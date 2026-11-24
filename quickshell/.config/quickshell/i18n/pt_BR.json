@@ -856,6 +856,8 @@
     "Screen on": "Tela ligada",
     "Off while the laptop lid is closed (Settings › Hyprland › Workspaces)": "Desligada enquanto a tampa do notebook está fechada (Configurações › Hyprland › Áreas de trabalho)",
     "Off, its workspaces move to the other monitors": "Desligada, as áreas de trabalho dela vão para os outros monitores",
+    "Primary monitor": "Monitor principal",
+    "The lock screen's password field and the power menu go here. Off on every monitor, they follow the focused one": "O campo de senha da tela de bloqueio e o menu de energia ficam aqui. Desligado em todos os monitores, eles seguem o que está em foco",
     "Mirror": "Espelhar",
     "Mirrored by %1, so it can't mirror another one": "Espelhado por %1, então não pode espelhar outro",
     "Shows the picture of %1; its workspaces go to the other monitors meanwhile": "Mostra a imagem de %1; enquanto isso, as áreas de trabalho dele vão para os outros monitores",

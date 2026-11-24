@@ -387,6 +387,15 @@ ColumnLayout {
             onToggled: value => root.setEnabled(root.selected, value)
         }
 
+        // monitors.primary: the lock's password field, the power menu and the app switcher;
+        // the others are secondary. Saved at once, no Apply
+        ToggleRow {
+            label: I18n.tr("Primary monitor")
+            description: I18n.tr("The lock screen's password field and the power menu go here. Off on every monitor, they follow the focused one")
+            checked: root.rule ? MonitorsService.primary === root.rule.name : false
+            onToggled: value => StateService.set("monitors.primary", value ? root.rule.name : "")
+        }
+
         SettingRow {
             id: mirrorRow
 

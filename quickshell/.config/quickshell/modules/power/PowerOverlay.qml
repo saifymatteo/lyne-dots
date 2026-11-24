@@ -75,7 +75,7 @@ Scope {
             id: window
 
             required property var modelData
-            // The focused monitor, or the first one if it's unknown
+            // PowerService.screen, or the first one if it's unknown
             readonly property bool hasMenu: {
                 const name = PowerService.screen;
                 const known = Quickshell.screens.some(s => s.name === name);

@@ -145,7 +145,7 @@ Singleton {
                 root.hide();
         }
     }
-    // Monitor showing the menu (the others are only dimmed)
+    // Monitor showing the menu: the primary one, else the focused one (the others are only dimmed)
     property string screen: ""
     property string selectedId: "shutdown"
 
@@ -182,7 +182,7 @@ Singleton {
         cancel();
         // The first one: shut down (or the first one shown)
         selectedId = actions[0].id;
-        screen = Hyprland.focusedMonitor?.name ?? "";
+        screen = MonitorsService.primaryOrFocused();
         refresh();
         closeTimer.stop();
         visible = true;

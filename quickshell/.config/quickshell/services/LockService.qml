@@ -7,8 +7,8 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Pam
 
-// Session lock: PAM authentication (started at lock, so face unlock runs
-// first), the password being typed (shared by the lock surfaces of every
+// Session lock: PAM authentication (password at lock, the face stack on the
+// "Unlock with Howdy" button), the password being typed (shared by the lock surfaces of every
 // monitor), locking before the system sleeps and on loginctl lock-session
 Singleton {
     id: root
@@ -25,7 +25,7 @@ Singleton {
     property string failMessage: ""
     property int attempts: 0
 
-    // Monitor showing the password field (the others show the clock)
+    // Monitor showing the password field and Howdy pill (the others show the clock)
     property string screen: ""
     // Password being typed; every lock surface edits this one
     property string buffer: ""
@@ -43,6 +43,11 @@ Singleton {
     property bool _requestedExists: false
     readonly property string pamService: _requestedService !== "" && !_requestedService.includes("/") && _requestedExists ? _requestedService : "login"
 
+    // The face stack runs only when asked (the "Unlock with Howdy" button);
+    // every other transaction uses the password-only "login" stack, so
+    // locking never turns the camera on
+    property bool _faceRequested: false
+
     // What PAM says while it isn't asking for anything (Howdy's "Attempting
     // face recognition"...), for the lock's status line
     readonly property string pamStatus: pam.active && !pam.responseRequired && !pam.messageIsError ? pam.message : ""
@@ -51,7 +56,7 @@ Singleton {
     // about to: from the start of a transaction until PAM asks for the
     // password or finishes. Howdy with detection_notice off says nothing
     // meanwhile, so pamStatus alone can't tell
-    readonly property bool scanning: _pamScanning || restartTimer.running
+    readonly property bool scanning: _pamScanning || (restartTimer.running && _faceRequested)
     property bool _pamScanning: false
 
     signal authSucceeded
@@ -61,11 +66,12 @@ Singleton {
     // ========================================================================
     // PAM AUTHENTICATION
     // ========================================================================
-    // A transaction starts as soon as the screen locks, without a password,
-    // so modules that need none (Howdy) run first. A password entered before
-    // PAM asks for one waits in _pendingPassword and is sent when it does.
-    // After a failure (and on wake, the camera doesn't survive sleep) the
-    // transaction starts again, once per event
+    // A password-only transaction starts as soon as the screen locks; the
+    // face button restarts it with pamService (Howdy first, then the
+    // password). A password entered before PAM asks for one waits in
+    // _pendingPassword and is sent when it does. After a failure (and on
+    // wake, the camera doesn't survive sleep) the transaction starts again,
+    // once per event, without the face stack
 
     property string _pendingPassword: ""
     // PAM asked and nothing was sent yet
@@ -170,9 +176,10 @@ Singleton {
         _awaitingResponse = false;
         _responded = false;
         _lastError = "";
-        pam.config = pamService;
+        pam.config = _faceRequested ? pamService : "login";
+        _pamScanning = _faceRequested;
+        _faceRequested = false;
         console.log("[Lock] Starting PAM (" + pam.config + ")");
-        _pamScanning = true;
         if (!pam.start()) {
             _pamScanning = false;
             // Not startable (config file gone...): no transaction, so no
@@ -219,7 +226,7 @@ Singleton {
     function lock() {
         if (!locked) {
             console.log("[Lock] Locking screen");
-            screen = Hyprland.focusedMonitor?.name ?? "";
+            screen = MonitorsService.primaryOrFocused();
             buffer = "";
             attempts = 0;
             failed = false;
@@ -228,6 +235,7 @@ Singleton {
             _pendingPassword = "";
             _autoRestarts = 0;
             _authed = false;
+            _faceRequested = false;
             locked = true;
             checkCapsLock();
             _startPam();
@@ -288,6 +296,7 @@ Singleton {
         console.log("[Lock] Face scan requested");
         failed = false;
         _autoRestarts = 0;
+        _faceRequested = true;
         if (pam.active) {
             // Waiting at the password prompt: same restart as on wake
             pam.abort();
