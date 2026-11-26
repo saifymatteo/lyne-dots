@@ -278,8 +278,9 @@ ColumnLayout {
         }
     }
 
-    // Face unlock again (Howdy gave up, or nobody was looking): a quiet
-    // outlined pill under the password. Only for a custom PAM service:
+    // Face unlock again (Howdy gave up, or nobody was looking): a pill under
+    // the password on the field's own card, so it reads on any wallpaper
+    // (a transparent, muted pill vanished on busy ones). Only for a custom PAM service:
     // plain "login" has no face module
     Rectangle {
         id: face
@@ -293,9 +294,9 @@ ColumnLayout {
         implicitHeight: Config.fontSizeNormal * 2.8
         radius: height / 2
         // The hover look also while Howdy scans (1-2 s), so the click shows
-        color: faceMouse.containsMouse || busy ? Qt.alpha(Config.cardHoverColor, 0.6) : Qt.alpha(Config.cardColor, 0)
+        color: faceMouse.containsMouse || busy ? Config.cardHoverColor : Config.cardColor
         border.width: 1
-        border.color: busy || faceMouse.containsMouse ? Qt.alpha(Config.accentColor, 0.6) : Qt.alpha(Config.mutedColor, 0.45)
+        border.color: Qt.alpha(Config.accentColor, busy || faceMouse.containsMouse ? 0.8 : 0.45)
 
         Behavior on color {
             enabled: !Config.themeTransitioning
@@ -314,7 +315,7 @@ ColumnLayout {
         Row {
             id: faceRow
 
-            readonly property color tint: face.busy || faceMouse.containsMouse ? Config.accentColor : Config.mutedColor
+            readonly property color tint: face.busy || faceMouse.containsMouse ? Config.accentColor : Config.subtextColor
 
             anchors.centerIn: parent
             spacing: Config.padding
